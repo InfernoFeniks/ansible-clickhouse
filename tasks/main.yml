@@ -1,0 +1,56 @@
+---
+# tasks file for roles/clickhause
+
+- name: CLICKHOUSE | Get distribs
+  block:
+    - name: Get clickhouse distrib for packages
+      ansible.builtin.get_url:
+        url: "https://packages.clickhouse.com/deb/pool/main/c/{{ item }}/{{ item }}_{{ clickhouse_ver }}_all.deb"
+        dest: "/tmp/{{ item }}_{{ clickhouse_ver }}.deb"
+        mode: "0644"
+      with_items: "{{ clickhouse_packages }}"
+  rescue:
+    - name: Get clickhouse distrib for common static
+      ansible.builtin.get_url:
+        url: "https://packages.clickhouse.com/deb/pool/main/c/clickhouse-common-static/clickhouse-common-static_{{ clickhouse_ver }}_amd64.deb"
+        dest: "/tmp/clickhouse-common-static_{{ clickhouse_ver }}.deb"
+        mode: "0644"
+
+- name: CLICKHOUSE | Install packages
+  become: true
+  ansible.builtin.apt:
+    deb: "/tmp/{{ item }}_{{ clickhouse_ver }}.deb"
+    state: present
+  with_items: "{{ clickhouse_packages }}"
+
+- name: CLICKHOUSE | Create db and table
+  block:
+    - name: CLICKHOUSE | Configurate
+      become: true
+      ansible.builtin.template:
+        src: clickhouse.config.j2
+        dest: "{{ clickhouse_config }}"
+        mode: "0644"
+    - name: CLICKHOUSE | Add user
+      become: true
+      ansible.builtin.template:
+        src: clickhouse.users.j2
+        dest: "{{ clickhouse_users }}"
+        mode: "0644"
+      notify: Start clickhouse service
+
+- name: CLICKHOUSE | Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: CLICKHOUSE | Create db and table
+  block:
+    - name: Create database
+      ansible.builtin.command: clickhouse-client -q 'CREATE DATABASE logs;'
+      register: create_db
+      failed_when: create_db.rc != 0 and create_db.rc != 82 and create_db.rc != 210
+      changed_when: create_db.rc == 0
+    - name: Create table
+      ansible.builtin.command: clickhouse-client -q 'CREATE TABLE logs.file ("file" String, "host" String, "message" String, "timestamp" DateTime) Engine=Log;'
+      register: create_table
+      failed_when: create_table.rc != 0 and create_table.rc != 57 and create_table.rc != 81
+      changed_when: create_table.rc == 0
