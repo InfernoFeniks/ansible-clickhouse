@@ -1,5 +1,6 @@
 galaxy_info:
   role_name: clickhouse
+  namespace: infernofeniks
   author: Maxim Kuzin
   company: InfernoFeniks
   description: Role for installation and managing ClickHouse
