@@ -78,6 +78,9 @@
         dest: "{{ clickhouse_users }}"
         mode: "0644"
 
+- name: CLICKHOUSE | Restarted service
+  include_tasks: service.yml
+
 - name: CLICKHOUSE | Create db and table
   block:
     - name: Create database
