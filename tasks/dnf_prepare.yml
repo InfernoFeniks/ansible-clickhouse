@@ -25,3 +25,4 @@
     path: "/etc/dnf/dnf.conf"
     regexp: '^gpgcheck=1'
     replace: 'gpgcheck=0'
+  become: true
